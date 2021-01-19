@@ -5,10 +5,12 @@ private class PardotPusherTest {
     static void shouldMakeHttpCallout() {
         //arrange
         List<PardotPusher.Payload> payloads = new List<PardotPusher.Payload>();
-        PardotPusher.Payload payload1 = new PardotPusher.Payload();
-        payload1.emailAddress = 'bob@email.com';
-        payload1.formhandlerURL = 'https://coolurlhere';
-        payloads.add(payload1);
+
+        //Build out 200 requests
+        for(Integer i = 0; i<200; i++) {
+            payloads.add(buildPayload('bob'+i+'@email.com','https://coolurlhere'+i));
+        }
+
         PardotPusherHttpCalloutMock httpMock = new PardotPusherHttpCalloutMock();
 
         //act
@@ -18,8 +20,17 @@ private class PardotPusherTest {
         Test.stopTest();
 
         //assert
-        HTTPRequest result = httpMock.capturedRequest;
-        System.assertEquals('https://coolurlhere', result.getEndpoint());
-        System.assertEquals('email=bob%40email.com', result.getBody());
+        for(Integer i=0; i<200; i++) { //we are testing that 200 http calls are being made
+            HttpRequest result = httpMock.capturedRequests.get(i);
+            System.assertEquals('https://coolurlhere'+i, result.getEndpoint());
+            System.assertEquals('email=bob'+i+'%40email.com', result.getBody());
+        }
+    }
+
+    private static PardotPusher.Payload buildPayload(String email, String url) {
+        PardotPusher.Payload p = new PardotPusher.Payload();
+        p.emailAddress = email;
+        p.formhandlerURL = url;
+        return p;
     }
 }

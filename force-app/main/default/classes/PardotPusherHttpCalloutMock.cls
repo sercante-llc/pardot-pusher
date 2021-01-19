@@ -1,10 +1,10 @@
 @isTest
 global class PardotPusherHttpCalloutMock implements HttpCalloutMock {
-    public HTTPRequest capturedRequest {get;set;}
+    public List<HTTPRequest> capturedRequests = new List<HTTPRequest>();
 
     // Implement this interface method
     global HTTPResponse respond(HTTPRequest req) {
-        this.capturedRequest = req;
+        this.capturedRequests.add(req);
         
         // Create a fake response
         HttpResponse res = new HttpResponse();

@@ -4,7 +4,11 @@
  * Pass in email address and Form Handler URL
  */
 public with sharing class PardotPusher {
+    private static final Integer HTTP_REQUESTS_PER_BATCH = 50;
 
+    /**
+     * Represents the Data that is passed in from Process Builder / Flows etc
+     */
     public class Payload {
         @InvocableVariable(label='Pardot FormHandler URL')
         public String formhandlerURL;
@@ -14,31 +18,45 @@ public with sharing class PardotPusher {
 
     @InvocableMethod(label='Post to Pardot')
     public static void postToPardot(List<Payload> payloads) {
-        // If bulk, only post first to avoid overloading Form Handler
-        Payload p = payloads[0];
-        String body = 'email=' + EncodingUtil.urlEncode(p.emailAddress, 'UTF-8');
-        System.enqueueJob(new QueueablePardotCall (p.formhandlerURL, 'POST', body));
+        //Very quickly pass this request into the ASYNC Queue, eliminating delays for Users
+        System.enqueueJob(new QueueablePardotCall (payloads));
     }
 
-   public class QueueablePardotCall implements System.Queueable, Database.AllowsCallouts {
-        private final String url;
-        private final String method;
-        private final String body;
+    /**
+     * Handles Asynchronously firing each Payload to Pardot
+     */
+    public class QueueablePardotCall implements System.Queueable, Database.AllowsCallouts {
+       //tracks which Payloads that should be sent out. This may be called recursively
+        private final List<Payload> payloads;
 
-        public QueueablePardotCall(String url, String method, String body) {
-            this.url = url;
-            this.method = method;
-            this.body = body;
+        public QueueablePardotCall(List<Payload> payloads) {
+            this.payloads = payloads;
         }
 
         public void execute(System.QueueableContext ctx) {
-            HttpRequest req = new HttpRequest();
-            req.setEndpoint(url);
-            req.setMethod(method);
-            req.setBody(body);
-            Http http = new Http();
-            //we fire it and don't care if it works as it likely will
-            http.send(req);
+            //Depending on how many Payloads we are processing, we might hit the APEX limit of 100 Web Callouts
+            List<Payload> remainingPayloads = new List<Payload>();
+            Integer processedCount = 0;
+
+            for(Payload payload : payloads) {
+                if(processedCount < HTTP_REQUESTS_PER_BATCH ) {
+                    String body = 'email=' + EncodingUtil.urlEncode(payload.emailAddress, 'UTF-8');
+                    HttpRequest req = new HttpRequest();
+                    req.setEndpoint(payload.formhandlerURL);
+                    req.setMethod('POST');
+                    req.setBody(body);
+                    Http http = new Http();
+                    //we fire it and don't care if it works as it likely will
+                    http.send(req);
+                    processedCount++;
+                }
+                else {
+                    remainingPayloads.add(payload); //we will process this in the next batch of Payloads
+                }
+            }
+            if(!remainingPayloads.isEmpty()) {
+                System.enqueueJob(new QueueablePardotCall (remainingPayloads));
+            }
         }
     }
 }
