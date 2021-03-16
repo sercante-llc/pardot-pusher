@@ -6,8 +6,8 @@ private class PardotPusherTest {
         //arrange
         List<PardotPusher.Payload> payloads = new List<PardotPusher.Payload>();
 
-        //Build out 200 requests
-        for(Integer i = 0; i<200; i++) {
+        //Build out requests to fill a single batch
+        for(Integer i = 0; i<PardotPusher.HTTP_REQUESTS_PER_BATCH; i++) {
             payloads.add(buildPayload('bob'+i+'@email.com','https://coolurlhere'+i));
         }
 
@@ -20,7 +20,7 @@ private class PardotPusherTest {
         Test.stopTest();
 
         //assert
-        for(Integer i=0; i<200; i++) { //we are testing that 200 http calls are being made
+        for(Integer i=0; i<PardotPusher.HTTP_REQUESTS_PER_BATCH; i++) { //we are testing that all callouts for a single batch are made
             HttpRequest result = httpMock.capturedRequests.get(i);
             System.assertEquals('https://coolurlhere'+i, result.getEndpoint());
             System.assertEquals('email=bob'+i+'%40email.com', result.getBody());

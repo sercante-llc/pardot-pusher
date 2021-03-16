@@ -4,7 +4,7 @@
  * Pass in email address and Form Handler URL
  */
 public with sharing class PardotPusher {
-    private static final Integer HTTP_REQUESTS_PER_BATCH = 50;
+    public static final Integer HTTP_REQUESTS_PER_BATCH = 50;
 
     /**
      * Represents the Data that is passed in from Process Builder / Flows etc
